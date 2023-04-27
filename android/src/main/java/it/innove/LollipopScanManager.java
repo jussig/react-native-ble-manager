@@ -92,6 +92,12 @@ public class LollipopScanManager extends ScanManager {
             }
         }
 
+        if (options.hasKey("manufacturerId")) {
+            int manufacturerId = options.getInt("manufacturerId");
+            ScanFilter filter = new ScanFilter.Builder().setManufacturerData(manufacturerId, new byte[0], new byte[0]).build();
+            filters.add(filter);
+        }
+
         if (options.hasKey("exactAdvertisingName")) {
             String expectedName = options.getString("exactAdvertisingName");
             Log.d(BleManager.LOG_TAG, "Filter on advertising name:" + expectedName);
