@@ -97,6 +97,11 @@ public class DefaultScanManager extends ScanManager {
             }
         }
 
+        if (options.hasKey("manufacturerId")) {
+            int manufacturerId = options.getInt("manufacturerId");
+            ScanFilter filter = new ScanFilter.Builder().setManufacturerData(manufacturerId, new byte[0], new byte[0]).build();
+            filters.add(filter);
+        }
 
         if (options.hasKey("exactAdvertisingName")) {
             ArrayList<Object> expectedNames = options.getArray("exactAdvertisingName").toArrayList();
