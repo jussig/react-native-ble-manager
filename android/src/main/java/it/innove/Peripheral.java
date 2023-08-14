@@ -109,11 +109,13 @@ public class Peripheral extends BluetoothGattCallback {
     }
 
     public void connect(final Callback callback, Activity activity, ReadableMap options) {
+        if (!connected) {
+            this.connecting = true;
+        }
         mainHandler.post(() -> {
             if (!connected) {
                 BluetoothDevice device = getDevice();
                 this.connectCallbacks.addLast(callback);
-                this.connecting = true;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     Log.d(BleManager.LOG_TAG, " Is Or Greater than M $mBluetoothDevice");
                     boolean autoconnect = false;

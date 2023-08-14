@@ -289,25 +289,31 @@ class BleManager extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void connect(String peripheralUUID, ReadableMap options, Callback callback) {
-        Log.d(LOG_TAG, "Connect to: " + peripheralUUID);
+        synchronized (peripherals) {
+            Log.d(LOG_TAG, "Connect to: " + peripheralUUID);
 
-        Peripheral peripheral = retrieveOrCreatePeripheral(peripheralUUID);
-        if (peripheral == null) {
-            callback.invoke("Invalid peripheral uuid");
-            return;
+            Peripheral peripheral = retrieveOrCreatePeripheral(peripheralUUID);
+            if (peripheral == null) {
+                callback.invoke("Invalid peripheral uuid");
+                return;
+            }
+            Log.d(LOG_TAG, "Connecting to peripheral: " + peripheral.toString());
+            peripheral.connect(callback, getCurrentActivity(), options);
         }
-        peripheral.connect(callback, getCurrentActivity(), options);
     }
 
     @ReactMethod
     public void disconnect(String peripheralUUID, boolean force, Callback callback) {
-        Log.d(LOG_TAG, "Disconnect from: " + peripheralUUID);
+        synchronized (peripherals) {
+            Log.d(LOG_TAG, "Disconnect from: " + peripheralUUID);
 
-        Peripheral peripheral = peripherals.get(peripheralUUID);
-        if (peripheral != null) {
-            peripheral.disconnect(callback, force);
-        } else
-            callback.invoke("Peripheral not found");
+            Peripheral peripheral = peripherals.get(peripheralUUID);
+            if (peripheral != null) {
+                Log.d(LOG_TAG, "Disconnecting from peripheral: " + peripheral.toString());
+                peripheral.disconnect(callback, force);
+            } else
+                callback.invoke("Peripheral not found");
+        }
     }
 
     @ReactMethod
@@ -335,6 +341,7 @@ class BleManager extends ReactContextBaseJavaModule {
         }
         Peripheral peripheral = peripherals.get(deviceUUID);
         if (peripheral != null) {
+            Log.d(LOG_TAG, "Registering notify: " + peripheral.toString());
             peripheral.registerNotify(UUIDHelper.uuidFromString(serviceUUID),
                     UUIDHelper.uuidFromString(characteristicUUID), 1, callback);
         } else
@@ -769,22 +776,20 @@ class BleManager extends ReactContextBaseJavaModule {
     }
 
 
-    private Peripheral retrieveOrCreatePeripheral(String peripheralUUID) {
+    private synchronized Peripheral retrieveOrCreatePeripheral(String peripheralUUID) {
         Peripheral peripheral = peripherals.get(peripheralUUID);
         if (peripheral == null) {
-            synchronized (peripherals) {
-                if (peripheralUUID != null) {
-                    peripheralUUID = peripheralUUID.toUpperCase();
+            if (peripheralUUID != null) {
+                peripheralUUID = peripheralUUID.toUpperCase();
+            }
+            if (BluetoothAdapter.checkBluetoothAddress(peripheralUUID)) {
+                BluetoothDevice device = bluetoothAdapter.getRemoteDevice(peripheralUUID);
+                if (Build.VERSION.SDK_INT >= LOLLIPOP && !forceLegacy) {
+                    peripheral = new DefaultPeripheral(device, reactContext);
+                } else {
+                    peripheral = new Peripheral(device, reactContext);
                 }
-                if (BluetoothAdapter.checkBluetoothAddress(peripheralUUID)) {
-                    BluetoothDevice device = bluetoothAdapter.getRemoteDevice(peripheralUUID);
-                    if (Build.VERSION.SDK_INT >= LOLLIPOP && !forceLegacy) {
-                        peripheral = new DefaultPeripheral(device, reactContext);
-                    } else {
-                        peripheral = new Peripheral(device, reactContext);
-                    }
-                    peripherals.put(peripheralUUID, peripheral);
-                }
+                peripherals.put(peripheralUUID, peripheral);
             }
         }
         return peripheral;
